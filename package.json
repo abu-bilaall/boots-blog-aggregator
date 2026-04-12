@@ -5,7 +5,9 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "tsx ./src/index.ts"
+    "start": "tsx ./src/index.ts",
+    "generate": "drizzle-kit generate",
+    "migrate": "drizzle-kit migrate"
   },
   "repository": {
     "type": "git",
@@ -21,7 +23,12 @@
   "homepage": "https://github.com/abu-bilaall/boots-blog-aggregator#readme",
   "devDependencies": {
     "@types/node": "^25.6.0",
+    "drizzle-kit": "^0.31.10",
     "tsx": "^4.21.0",
     "typescript": "^6.0.2"
+  },
+  "dependencies": {
+    "drizzle-orm": "^0.45.2",
+    "postgres": "^3.4.9"
   }
 }
