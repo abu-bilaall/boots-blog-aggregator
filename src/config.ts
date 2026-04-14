@@ -7,7 +7,7 @@ type GatorConfig = {
   currentUserName: string;
 };
 
-export function setUser(user: string): void {
+function setUser(user: string): void {
   const cfg = readConfig();
   const config = {
     db_url: cfg.dbUrl,
@@ -41,10 +41,12 @@ function validateConfig(rawConfig: any): GatorConfig {
   return { dbUrl, currentUserName };
 }
 
-export function readConfig(): GatorConfig {
+function readConfig(): GatorConfig {
   const configFile = getConfigFilePath();
   const configJSON = fs.readFileSync(configFile, "utf-8");
 
   const configContent = validateConfig(JSON.parse(configJSON));
   return configContent;
 }
+
+export { setUser, readConfig };
