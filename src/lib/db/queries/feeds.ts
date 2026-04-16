@@ -24,4 +24,9 @@ async function getAllFeedsWithTheirUsers() {
   return result;
 }
 
-export { createFeed, deleteAllFeeds, getAllFeedsWithTheirUsers };
+async function getFeed(feedUrl: string) {
+  const result = await db.select().from(feeds).where(eq(feeds.url, feedUrl));
+  return result[0];
+}
+
+export { createFeed, deleteAllFeeds, getAllFeedsWithTheirUsers, getFeed};
