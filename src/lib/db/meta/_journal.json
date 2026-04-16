@@ -8,6 +8,13 @@
       "when": 1776012558435,
       "tag": "0000_aromatic_tusk",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1776271956957,
+      "tag": "0001_sweet_expediter",
+      "breakpoints": true
     }
   ]
 }
