@@ -1,13 +1,19 @@
-import { createFeed, deleteAllFeeds } from "lib/db/queries/feeds";
 import { readConfig, setUser } from "./config";
+import { fetchFeed } from "./rss";
+import { Feed, User } from "lib/db/schema";
+
 import {
   createUser,
   getAllUsers,
   deleteAllUsers,
   getUser,
 } from "./lib/db/queries/users";
-import { fetchFeed } from "./rss";
-import { Feed, User } from "lib/db/schema";
+
+import {
+  createFeed,
+  deleteAllFeeds,
+  getAllFeedsWithTheirUsers,
+} from "lib/db/queries/feeds";
 
 // command registry and its helper functions
 type CommandHandler = (cmdName: string, ...args: string[]) => Promise<void>;
@@ -145,14 +151,16 @@ ${itemsFormatted}
 
 async function handlerAddFeed(cmdName: string, ...args: string[]) {
   if (args.length < 2) {
-    throw new Error("Name and URL of the feed must be specified.")
+    throw new Error("Name and URL of the feed must be specified.");
   }
 
   const feedName = args[0];
   const feedUrl = args[1];
-  
+
   if (!isHttpUrl(feedUrl)) {
-    throw new Error("Invalid URL. See example: 'addfeed \"feed name\" \"https://gator.cli/\"'");
+    throw new Error(
+      'Invalid URL. See example: \'addfeed "feed name" "https://gator.cli/"\'',
+    );
   }
 
   try {
@@ -166,6 +174,20 @@ async function handlerAddFeed(cmdName: string, ...args: string[]) {
   }
 }
 
+async function handlerFeeds() {
+  const feedsData = await getAllFeedsWithTheirUsers();
+  console.log(
+    `We found a total of ${feedsData.length} ${feedsData.length > 1 ? "feeds" : "feed"}...\n`,
+  );
+  feedsData.forEach((feed, index) => {
+    console.log(`Feed #${index + 1}`);
+    console.log(`Name: ${feed.name}`);
+    console.log(`URL: ${feed.url}`);
+    console.log(`User: ${feed.user}`);
+    console.log("-------------------");
+  });
+}
+
 // command registers
 const registry: CommandsRegisty = {};
 registerCommand(registry, "login", handlerLogin);
@@ -174,5 +196,6 @@ registerCommand(registry, "reset", handlerReset);
 registerCommand(registry, "users", handlerUsers);
 registerCommand(registry, "agg", handlerAgg);
 registerCommand(registry, "addfeed", handlerAddFeed);
+registerCommand(registry, "feeds", handlerFeeds);
 
 export { runCommand, registry };
