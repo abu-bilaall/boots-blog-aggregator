@@ -11,8 +11,7 @@ async function createFeed(feedName: string, feedUrl: string, userId: string) {
 }
 
 async function deleteAllFeeds() {
-  const result = await db.delete(feeds);
-  return result[1];
+  await db.delete(feeds);
 }
 
 async function getAllFeedsWithTheirUsers() {
@@ -20,7 +19,7 @@ async function getAllFeedsWithTheirUsers() {
     .select({ name: feeds.name, url: feeds.url, user: users.name })
     .from(feeds)
     .innerJoin(users, eq(users.id, feeds.userId));
-  
+
   return result;
 }
 
@@ -29,4 +28,4 @@ async function getFeed(feedUrl: string) {
   return result[0];
 }
 
-export { createFeed, deleteAllFeeds, getAllFeedsWithTheirUsers, getFeed};
+export { createFeed, deleteAllFeeds, getAllFeedsWithTheirUsers, getFeed };

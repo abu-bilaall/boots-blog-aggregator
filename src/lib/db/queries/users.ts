@@ -8,7 +8,8 @@ async function createUser(name: string) {
 }
 
 async function getUser(name: string) {
-  return await db.select().from(users).where(eq(users.name, name));
+  const result = await db.select().from(users).where(eq(users.name, name));
+  return result[0];
 }
 
 async function getAllUsers() {
