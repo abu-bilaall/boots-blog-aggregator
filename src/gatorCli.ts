@@ -13,10 +13,20 @@ import {
   createFeed,
   deleteAllFeeds,
   getAllFeedsWithTheirUsers,
+  getFeed,
 } from "lib/db/queries/feeds";
+import {
+  createFeedFollow,
+  getFeedFollowsForUser,
+} from "lib/db/queries/feedFollows";
 
 // command registry and its helper functions
 type CommandHandler = (cmdName: string, ...args: string[]) => Promise<void>;
+type UserCommandHandler = (
+  cmdName: string,
+  user: User,
+  ...args: string[]
+) => Promise<void>;
 type CommandsRegisty = Record<string, CommandHandler>;
 
 function registerCommand(
@@ -64,6 +74,18 @@ function isHttpUrl(url: string): boolean {
   }
 }
 
+function middlewareLoggedIn(handler: UserCommandHandler): CommandHandler {
+  return async (cmdName: string, ...args: string[]): Promise<void> => {
+    const userName = readConfig().currentUserName;
+    const user = await getUser(userName);
+    if (!user) {
+      throw new Error(`User ${userName} not found`);
+    }
+
+    return await handler(cmdName, user, ...args);
+  };
+}
+
 // command handlers
 async function handlerLogin(cmdName: string, ...args: string[]): Promise<void> {
   if (args.length === 0) {
@@ -104,7 +126,7 @@ Updated At: ${user.updatedAt.toISOString()}
 
 async function handlerReset(cmdName: string, ...args: string[]) {
   await deleteAllUsers();
-  await deleteAllFeeds;
+  await deleteAllFeeds();
   console.log("db has been reset");
 }
 
@@ -149,7 +171,11 @@ ${itemsFormatted}
   }
 }
 
-async function handlerAddFeed(cmdName: string, ...args: string[]) {
+async function handlerAddFeed(
+  cmdName: string,
+  user: User,
+  ...args: string[]
+) {
   if (args.length < 2) {
     throw new Error("Name and URL of the feed must be specified.");
   }
@@ -164,12 +190,13 @@ async function handlerAddFeed(cmdName: string, ...args: string[]) {
   }
 
   try {
-    const user = readConfig().currentUserName;
-    const userDetails = await getUser(user);
-    const userId = userDetails[0].id;
+    const userId = user.id;
     const feed = await createFeed(feedName, feedUrl, userId);
-    printFeed(feed, userDetails[0]);
+    const feedId = feed.id;
+    await createFeedFollow(userId, feedId);
+    printFeed(feed, user);
   } catch (error) {
+    console.log(error);
     throw new Error(`${args[0]} has already been added`);
   }
 }
@@ -188,6 +215,40 @@ async function handlerFeeds() {
   });
 }
 
+async function handlerFollow(cmdName: string, user: User, ...args: string[]) {
+  if (args.length === 0) {
+    throw new Error("the url to be followed must be specified");
+  }
+
+  const feedUrl = args[0];
+
+  if (!isHttpUrl(feedUrl)) {
+    throw new Error("URL is not valid");
+  }
+
+  const { id: feedId, name: feedName } = await getFeed(feedUrl);
+  const userId = user.id;
+  const followInfo = await createFeedFollow(userId, feedId);
+
+  console.log(`Current user: ${user.name}`);
+  console.log(`You're now following ${feedName}`);
+}
+
+async function handlerFollowing(cmdName: string, user: User, ...args: string[]) {
+  const followingFeeds = await getFeedFollowsForUser(user.id);
+
+  console.log(`Current user: ${user.name}`);
+  if (followingFeeds.length === 0) {
+    console.log(`You are not following any feeds.`);
+    return;
+  }
+
+  console.log(`You are following ${followingFeeds.length} feed(s):`);
+  followingFeeds.forEach((feed, index) => {
+    console.log(`${index + 1}. ${feed}`);
+  });
+}
+
 // command registers
 const registry: CommandsRegisty = {};
 registerCommand(registry, "login", handlerLogin);
@@ -195,7 +256,9 @@ registerCommand(registry, "register", handlerRegister);
 registerCommand(registry, "reset", handlerReset);
 registerCommand(registry, "users", handlerUsers);
 registerCommand(registry, "agg", handlerAgg);
-registerCommand(registry, "addfeed", handlerAddFeed);
+registerCommand(registry, "addfeed", middlewareLoggedIn(handlerAddFeed));
 registerCommand(registry, "feeds", handlerFeeds);
+registerCommand(registry, "follow", middlewareLoggedIn(handlerFollow));
+registerCommand(registry, "following", middlewareLoggedIn(handlerFollowing));
 
 export { runCommand, registry };
