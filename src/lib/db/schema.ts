@@ -20,6 +20,7 @@ const feeds = pgTable("feeds", {
     .notNull()
     .defaultNow()
     .$onUpdate(() => new Date()),
+  lastFetchedAt: timestamp("last_fetched_at"),
   name: text("name").notNull(),
   url: text("url").notNull().unique(),
   userId: uuid("user_id")
