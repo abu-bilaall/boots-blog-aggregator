@@ -14,6 +14,8 @@ import {
   deleteAllFeeds,
   getAllFeedsWithTheirUsers,
   getFeed,
+  getNextFeedToFetch,
+  markFeedFetched,
 } from "lib/db/queries/feeds";
 import {
   createFeedFollow,
@@ -87,6 +89,59 @@ function middlewareLoggedIn(handler: UserCommandHandler): CommandHandler {
   };
 }
 
+async function scrapeFeeds() {
+  try {
+    const nextFeed = await getNextFeedToFetch();
+
+    if (!nextFeed) {
+      throw new Error("No feeds available to scrape");
+    }
+
+    await markFeedFetched(nextFeed.id);
+
+    const nextFeedData = await fetchFeed(nextFeed.url);
+
+    if (nextFeedData.channel.item.length === 0) {
+      throw new Error("This feed has zero items");
+    }
+
+    nextFeedData.channel.item.forEach((item) => {
+      console.log(item.title);
+    });
+  } catch (error) {
+    throw new Error(
+      `Feed scraping failed: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    );
+  }
+}
+
+function parseDuration(durationStr: string): number {
+  const regex = /^(\d+)(ms|s|m|h)$/;
+  const match = durationStr.match(regex);
+
+  if (!match) {
+    throw new Error(`Invalid duration: ${durationStr}`);
+  }
+
+  const value = Number(match[1]);
+  const unit = match[2];
+
+  switch (unit) {
+    case "ms":
+      return value;
+    case "s":
+      return value * 1000;
+    case "m":
+      return value * 60 * 1000;
+    case "h":
+      return value * 60 * 60 * 1000;
+    default:
+      throw new Error(`Unsupported unit: ${unit}`);
+  }
+}
+
 // command handlers
 async function handlerLogin(cmdName: string, ...args: string[]): Promise<void> {
   if (args.length === 0) {
@@ -141,32 +196,24 @@ async function handlerUsers(cmdName: string, ...args: string[]) {
 
 async function handlerAgg(cmdName: string, ...args: string[]) {
   if (args.length === 0) {
-    throw new Error("feed must be specified");
+    throw new Error("Duration must be specified");
   }
 
   try {
-    const feed = await fetchFeed(args[0]);
-    // const feed = await fetchFeed("https://www.wagslane.dev/index.xml");
+    const timeBetweenRequests = parseDuration(args[0]);
+    console.log(`Collecting feeds every ${args[0]}.`);
+    scrapeFeeds();
+    const interval = setInterval(() => {
+      scrapeFeeds();
+    }, timeBetweenRequests);
 
-    const itemsFormatted = feed.channel.item
-      .map((item, index) => {
-        return `\tItem ${index + 1}:
-\t\tTitle: ${item.title}
-\t\tDescription: ${item.description}
-\t\tLink: ${item.link}`;
-      })
-      .join("\n\n");
-
-    console.log(`${feed.channel.title} has been fetched successfully.
-
-${feed.channel.title} details:
--------------
-Title: ${feed.channel.title}
-Description: ${feed.channel.description}
-Link: ${feed.channel.link}
-Item:
-${itemsFormatted}
-`);
+    await new Promise<void>((resolve) => {
+      process.on("SIGINT", () => {
+        console.log("Shutting down feed aggregator...");
+        clearInterval(interval);
+        resolve();
+      });
+    });
   } catch (error) {
     throw error;
   }
