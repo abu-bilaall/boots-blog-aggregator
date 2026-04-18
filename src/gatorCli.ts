@@ -17,6 +17,7 @@ import {
 } from "lib/db/queries/feeds";
 import {
   createFeedFollow,
+  deleteFeedFollow,
   getFeedFollowsForUser,
 } from "lib/db/queries/feedFollows";
 
@@ -171,11 +172,7 @@ ${itemsFormatted}
   }
 }
 
-async function handlerAddFeed(
-  cmdName: string,
-  user: User,
-  ...args: string[]
-) {
+async function handlerAddFeed(cmdName: string, user: User, ...args: string[]) {
   if (args.length < 2) {
     throw new Error("Name and URL of the feed must be specified.");
   }
@@ -234,7 +231,31 @@ async function handlerFollow(cmdName: string, user: User, ...args: string[]) {
   console.log(`You're now following ${feedName}`);
 }
 
-async function handlerFollowing(cmdName: string, user: User, ...args: string[]) {
+async function handlerUnfollow(cmdName: string, user: User, ...args: string[]) {
+  if (args.length === 0) {
+    throw new Error("the url to be followed must be specified");
+  }
+
+  const feedUrl = args[0];
+
+  if (!isHttpUrl(feedUrl)) {
+    throw new Error("URL is not valid");
+  }
+
+  try {
+    const feedId = (await getFeed(feedUrl)).id;
+    const userId = user.id;
+    await deleteFeedFollow(userId, feedId);
+  } catch (error) {
+    throw new Error(`Feed ${feedUrl} does not exist`);
+  }
+}
+
+async function handlerFollowing(
+  cmdName: string,
+  user: User,
+  ...args: string[]
+) {
   const followingFeeds = await getFeedFollowsForUser(user.id);
 
   console.log(`Current user: ${user.name}`);
@@ -260,5 +281,6 @@ registerCommand(registry, "addfeed", middlewareLoggedIn(handlerAddFeed));
 registerCommand(registry, "feeds", handlerFeeds);
 registerCommand(registry, "follow", middlewareLoggedIn(handlerFollow));
 registerCommand(registry, "following", middlewareLoggedIn(handlerFollowing));
+registerCommand(registry, "unfollow", middlewareLoggedIn(handlerUnfollow));
 
 export { runCommand, registry };
