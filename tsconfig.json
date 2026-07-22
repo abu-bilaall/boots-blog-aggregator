@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "path": {
+    "paths": {
       "*": ["./src/*"]
     },
     "target": "esnext",
@@ -8,9 +8,10 @@
     "rootDir": "./src",
     "outDir": "./dist",
     "strict": true,
-    "moduleResolution": "Node",
+    // "moduleResolution": "Node",
     "esModuleInterop": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "types": ["node"]
   },
   "include": ["./src/**/*.ts"],
   "exclude": ["node_modules"]

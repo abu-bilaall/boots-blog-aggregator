@@ -47,4 +47,17 @@ const feedFollows = pgTable(
   (t) => [unique("feed_follows_user_id_feed_id_unique").on(t.userId, t.feedId)],
 );
 
-export { users, feeds, User, Feed, feedFollows };
+const posts = pgTable("posts", {
+  id: uuid("id").primaryKey().defaultRandom().notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  title: text("title").notNull(),
+  url: text("url").notNull().unique(),
+  description: text("description"),
+  publishedAt: timestamp("published_at"),
+  feedId: uuid("feed_id")
+    .notNull()
+    .references(() => feeds.id, { onDelete: "cascade" }),
+});
+
+export { users, feeds, User, Feed, feedFollows, posts };
